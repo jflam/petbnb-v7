@@ -1,8 +1,8 @@
-# Modern Spatial Data Web Application Starter App
+# PetBnB - Pet Sitting Marketplace
 
-A modern full-stack application starter app with spatial data capabilities built with:
+A modern pet sitting marketplace application with spatial search capabilities built with:
 
-- React with TypeScript for the frontend
+- React 18 with TypeScript for the frontend
 - Vite 6 for fast development and optimized builds
 - Express 5 (RC) for the backend API
 - PostgreSQL 15 with PostGIS 3.4 for spatial data
@@ -10,63 +10,57 @@ A modern full-stack application starter app with spatial data capabilities built
 
 ## Features
 
-- SQL-first approach with node-pg-migrate for migrations
-- Raw SQL queries using pg driver (no ORM)
-- Leaflet for interactive maps
-- Spatial queries with PostGIS:
-  - Find restaurants within a specified radius
-  - Calculate distances between points
-  - Store and retrieve geographic coordinates
-- Comprehensive testing setup with Vitest and Playwright
-- Docker Compose configuration for local development
-- Multi-stage Docker build for production
+- **Location-based search**: Find pet sitters within a customizable radius
+- **Interactive maps**: Leaflet with marker clustering for sitter locations
+- **Real-time data**: SWR for efficient data fetching and caching
+- **Spatial queries with PostGIS**:
+  - Find sitters within a specified distance
+  - Calculate distances between locations
+  - Store and query geographic coordinates
+- **Comprehensive testing**: Vitest, Jest, and Playwright
+- **Modern UI**: Responsive design with hover effects and gradients
+- **Type safety**: Full TypeScript implementation
 
 ## Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/jflam/ai-starter-app-postgis.git
-cd ai-starter-app-postgis
-
 # Install dependencies
 npm install
 
-# Set up environment variables
-# You will register and obtain a free Mapbox token otherwise the map will not render
-# https://docs.mapbox.com/help/getting-started/access-tokens/
-
-cp .env.example .env
-
-# Start development servers (automatically starts database, runs migrations, and opens the browser)
+# Start development servers (automatically starts database, runs migrations, and seeds data)
 npm run dev
 ```
 
 > **Note:** The `npm run dev` command will automatically:
-> - Start PostgreSQL and PostGIS with Docker
+> - Start PostgreSQL and PostGIS with Docker on port 5433 (to avoid conflicts)
 > - Wait for the database to be ready
-> - Run migrations if needed
-> - Start frontend and backend development servers
-> - Open your default browser to the frontend application
+> - Run migrations to create tables
+> - Seed the database with sample users and sitters
+> - Start frontend (port 5173) and backend (port 3001) development servers
 
 ## Database
 
-The application uses PostgreSQL with the PostGIS extension for spatial data handling. This enables:
+The application uses PostgreSQL with PostGIS for spatial pet sitter searches:
 
-- Storing restaurant locations as geometric points using the POINT data type
-- Querying restaurants within a certain distance of a location using ST_DWithin
-- Calculating the distance between points using ST_Distance
+- **Users**: Pet owners, sitters, or both with secure password hashing
+- **Sitters**: Profiles with location, rates, ratings, and availability
+- **Pets**: Owner's pet profiles with details and special needs
+- **Bookings**: Reservation system with status tracking
 
-Key SQL queries used in the application:
+Key spatial query for finding nearby sitters:
 
 ```sql
--- Find all restaurants within a 5km radius of a point
-SELECT id, name, ST_Distance(location::geography, ST_MakePoint(-122.3321, 47.6062)::geography) / 1000 AS distance_km
-FROM restaurants
-WHERE ST_DWithin(location::geography, ST_MakePoint(-122.3321, 47.6062)::geography, 5000)
-ORDER BY distance_km;
+-- Find all available sitters within 5km of a location
+SELECT s.*, u.first_name, u.last_name,
+  ST_Distance(s.location::geography, ST_MakePoint($1,$2)::geography) AS meters
+FROM sitters s
+JOIN users u ON s.user_id = u.id
+WHERE s.available = true 
+  AND ST_DWithin(s.location::geography, ST_MakePoint($1,$2)::geography, 5000)
+ORDER BY meters;
 ```
 
-For more information on database setup and management, see [DATABASE.md](DATABASE.md).
+For detailed database setup and schema information, see [DATABASE.md](DATABASE.md).
 
 ## Directory Structure
 

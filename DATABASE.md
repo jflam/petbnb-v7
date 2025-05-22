@@ -1,102 +1,117 @@
 # Database Setup Guide
 
-Follow these steps to set up the PostgreSQL/PostGIS database for the application.
-
 ## Prerequisites
-
-Ensure you have the following installed:
 - Docker and Docker Compose
 - Node.js 20 or higher
 
 ## Setup Steps
 
-1. **Start the PostgreSQL/PostGIS container**
-
-   ```bash
-   docker-compose up -d postgres
-   ```
-
-   This will start the PostgreSQL container with PostGIS extension.
-
-2. **Run database migrations**
-
-   ```bash
-   npm run migrate
-   ```
-
-   This will create the tables and indexes needed for the application.
-
-3. **Seed the database with sample data**
-
-   ```bash
-   npm run seed
-   ```
-
-   This will import sample restaurant data from the CSV file.
-
-4. **Verify the database setup**
-
-   ```bash
-   node scripts/check-db.js
-   ```
-
-   This will check that the database is running, tables are created, and sample data is loaded.
-
-## Database Connection
-
-The application uses the `DATABASE_URL` environment variable to connect to the database. This is set in the `.env` file.
-
-Default connection string:
-```
-postgres://postgres:postgres@localhost:5432/app_db
+### 1. Start PostgreSQL Container
+```bash
+docker-compose up -d postgres
 ```
 
-If you're using Docker, the connection string will be:
+### 2. Verify Database Connection
+```bash
+npm run check-db
 ```
-postgres://postgres:postgres@postgres:5432/app_db
+
+### 3. Run Migrations
+```bash
+npm run migrate
+```
+
+### 4. Seed the Database
+```bash
+npm run seed
+```
+
+## Database Schema
+
+### Users Table
+Stores all users (pet owners, sitters, or both):
+- `id` - Primary key
+- `email` - Unique email address
+- `password_hash` - Hashed password (bcrypt)
+- `role` - 'owner', 'sitter', or 'both'
+- `first_name`, `last_name` - User names
+- `phone` - Contact number
+- `created_at`, `updated_at` - Timestamps
+
+### Sitters Table
+Pet sitter profiles:
+- `id` - Primary key
+- `user_id` - Foreign key to users table
+- `title` - Sitter profile title
+- `description` - Bio/description
+- `hourly_rate`, `daily_rate` - Pricing (optional)
+- `location` - PostGIS Point geometry (SRID 4326)
+- `address`, `city` - Location details
+- `available` - Boolean availability status
+- `rating`, `review_count` - Review metrics
+- `created_at`, `updated_at` - Timestamps
+
+### Pets Table
+Pet profiles for owners:
+- `id` - Primary key
+- `owner_id` - Foreign key to users table
+- `name` - Pet name
+- `type` - 'dog', 'cat', 'bird', etc.
+- `breed`, `age`, `size` - Pet characteristics
+- `description`, `special_needs` - Additional info
+- `created_at` - Timestamp
+
+### Bookings Table
+Booking records:
+- `id` - Primary key
+- `owner_id`, `sitter_id`, `pet_id` - Foreign keys
+- `start_date`, `end_date` - Booking period
+- `status` - 'pending', 'confirmed', 'completed', 'cancelled'
+- `total_amount` - Booking cost
+- `notes` - Additional notes
+- `created_at`, `updated_at` - Timestamps
+
+## Spatial Queries
+
+The application uses PostGIS for location-based searches:
+
+### Finding Nearby Sitters
+```sql
+SELECT s.*, 
+  ST_Distance(s.location::geography, ST_MakePoint($1,$2)::geography) AS meters
+FROM sitters s
+WHERE s.available = true 
+  AND ST_DWithin(s.location::geography, ST_MakePoint($1,$2)::geography, $3*1000)
+ORDER BY meters;
 ```
 
 ## Troubleshooting
 
-If you encounter issues with the database setup:
+### Database Connection Issues
+- Check logs: `docker-compose logs postgres`
+- Verify port 5433 is available (changed from default 5432 to avoid conflicts)
+- Connect directly: `docker exec -it <container> psql -U postgres -d app_db`
 
-1. **Check database container is running**
+### Reset Database
+```bash
+docker-compose down
+docker-compose up -d postgres
+npm run migrate
+npm run seed
+```
 
-   ```bash
-   docker ps
-   ```
+### Common Commands
+- View all containers: `docker-compose ps`
+- Stop all services: `docker-compose down`
+- View database logs: `docker-compose logs postgres`
+- Check database status: `npm run check-db`
 
-   You should see the PostgreSQL container running.
+## Sample Data
 
-2. **Check database logs**
+The seed script creates:
+- 6 sample users with different roles
+- 4 pet sitters in the Seattle area
+- 3 sample pets
+- Proper password hashing with bcrypt
 
-   ```bash
-   docker-compose logs postgres
-   ```
-
-3. **Connect directly to the database**
-
-   ```bash
-   docker exec -it ai-starter-app-postgis_postgres_1 psql -U postgres -d app_db
-   ```
-
-   Once connected, you can check tables:
-   ```sql
-   \dt
-   SELECT COUNT(*) FROM restaurants;
-   ```
-
-4. **Restart the database container**
-
-   ```bash
-   docker-compose restart postgres
-   ```
-
-5. **Remove and recreate the database container**
-
-   ```bash
-   docker-compose down
-   docker-compose up -d postgres
-   npm run migrate
-   npm run seed
-   ```
+All coordinates use SRID 4326 (WGS84) for compatibility with web mapping libraries.

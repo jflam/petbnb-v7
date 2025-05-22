@@ -1,11 +1,20 @@
 #!/bin/sh
 set -e
 
+echo "Starting PetBnB application..."
+
+# Wait for database to be ready
+echo "Waiting for database to be ready..."
+./scripts/wait-for-it.sh postgres:5432 -- echo "Database is ready"
+
 # Run migrations
-node-pg-migrate -d "$DATABASE_URL" -m /app/migrations
+echo "Running database migrations..."
+npm run migrate
 
 # Seed the database
-node /app/scripts/seed.js
+echo "Seeding database..."
+npm run seed
 
-# Start the server
-exec node /app/src/server/simplified-server.js
+# Start the application
+echo "Starting server..."
+exec node src/server/simplified-server.js

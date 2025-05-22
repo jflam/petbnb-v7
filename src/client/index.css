@@ -98,6 +98,138 @@ h1 {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
+/* Sitter Card Styling */
+.sitter-card {
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  background-color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  padding: 1.25rem;
+}
+
+.sitter-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.sitter-card-header h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.sitter-name {
+  font-size: 1rem;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.sitter-description {
+  color: #555;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.sitter-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sitter-rate {
+  font-weight: 600;
+  color: #2196F3;
+  font-size: 1.1rem;
+}
+
+.sitter-location {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.distance {
+  color: #999;
+}
+
+.sitter-rating {
+  color: #FFD700;
+  font-size: 0.9rem;
+}
+
+.contact-button {
+  background: linear-gradient(135deg, #2196F3, #00BCD4);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+}
+
+.contact-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+}
+
+.sitter-list {
+  margin-top: 2rem;
+}
+
+.sitter-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.sitter-map-container {
+  width: 100%;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.error {
+  color: #e74c3c;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.controls label {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.controls input[type="range"] {
+  width: 200px;
+}
+
+/* Popup styling for sitters */
+.sitter-popup h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.sitter-popup p {
+  margin: 0.25rem 0;
+  color: #555;
+}
+
 .card-header {
   position: relative;
   height: 180px;

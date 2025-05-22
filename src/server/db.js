@@ -13,7 +13,7 @@ if (!connectionString) {
 // Determine the default host based on whether we're in Docker
 const isInDocker = process.env.RUNNING_IN_DOCKER === 'true';
 const defaultHost = isInDocker ? 'postgres' : 'localhost';
-const defaultConnectionString = `postgres://postgres:postgres@${defaultHost}:5432/app_db`;
+const defaultConnectionString = `postgres://postgres:postgres@${defaultHost}:5433/app_db`;
 
 // If running outside Docker but the connection string has 'postgres' hostname,
 // replace it with 'localhost' so it can connect

@@ -1,5 +1,5 @@
 import React from 'react';
-import RestaurantMap from './components/RestaurantMap';
+import SitterMap from './components/SitterMap';
 import Header from './components/Header';
 import './utils/fixLeafletIcons'; // Fix Leaflet icon paths
 
@@ -8,7 +8,7 @@ const App: React.FC = () => {
     <div className="app">
       <Header />
       <main>
-        <RestaurantMap />
+        <SitterMap />
       </main>
     </div>
   );

@@ -102,7 +102,7 @@ async function waitForDatabase() {
     fs.chmodSync(waitScript, '755');
     
     // Run the script with a timeout
-    await runCommand(waitScript, ['localhost:5432', '--', 'echo', 'Database is ready']);
+    await runCommand(waitScript, ['localhost:5433', '--', 'echo', 'Database is ready']);
     log('Database is ready!', colors.green);
   } catch (error) {
     log(`Database did not become ready: ${error.message}`, colors.yellow);
@@ -114,7 +114,7 @@ async function waitForDatabase() {
 async function setupDatabase() {
   try {
     // Set the correct DATABASE_URL for local development
-    const localDbUrl = "postgres://postgres:postgres@localhost:5432/app_db";
+    const localDbUrl = "postgres://postgres:postgres@localhost:5433/app_db";
     log(`Using database URL: ${localDbUrl}`, colors.blue);
     
     // Set environment variable for child processes
