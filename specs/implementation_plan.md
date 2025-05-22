@@ -16,45 +16,28 @@
 |----------------|-----------|----------------|-------|
 | **Core Runtime** | Node.js | **20.11.x LTS** | Required by Vite 6 / Express 5 |
 | | TypeScript | **5.3.x** | Compiler and type checking |
-| | pnpm | **8.10.x** | Package manager |
-| **Front-End** | React | **18.2.x** | UI framework (production-ready) |
-| | Vite | **5.0.x** | Bundler/dev‑server |
-| | Zustand | **4.4.x** | State management |
-| | React Query | **5.21.x** | Server state management |
-| | Tailwind CSS | **3.4.x** | CSS framework |
+| | npm | **10.x** | Package manager (not pnpm) |
+| **Front-End** | React | **18.0.0** | UI framework (keep current) |
+| | Vite | **6.0.0** | Bundler/dev‑server (keep current) |
+| | SWR | **2.2.4** | Data fetching (keep current) |
+| | Tailwind CSS | **3.4.x** | CSS framework (new addition) |
 | | React Hook Form | **7.45.x** | Form handling |
 | | Zod | **3.22.x** | Runtime validation |
-| | React Router | **6.14.x** | Client-side routing |
-| | Vitest | **1.4.x** | Unit testing |
+| | Vitest | **3.x** | Unified testing framework |
 | | Playwright | **1.42.x** | E2E testing |
-| **Back-End** | NestJS | **10.3.x** | Node.js framework |
-| | Prisma ORM | **5.10.x** | Database ORM |
-| | class-validator | **0.14.x** | Validation |
-| | class-transformer | **0.5.x** | Data transformation |
-| | Passport.js | **0.7.x** | Authentication |
-| | CASL | **6.6.x** | Authorization |
-| | Jest | **29.7.x** | Testing framework |
-| | Supertest | **6.4.x** | HTTP testing |
+| **Back-End** | Express | **5.0.0-rc.1** | Node.js framework (keep current) |
+| | pg | **8.x** | Raw SQL PostgreSQL driver |
+| | Passport.js | **0.7.x** | Authentication (email/password only) |
 | **Data Stores** | PostgreSQL | **15.4** | Primary database |
-| | PostGIS | **3.4** | Spatial extensions |
-| | Redis | **7.2** | Caching layer |
-| | OpenSearch | **2.12** | Search engine (optional) |
+| | PostGIS | **3.4** | Spatial extensions (keep for sitter discovery) |
 | **DevOps / Tooling** | Docker Engine | **24.0.x** | Containerization |
-| | Nx | **17.5.x** | Monorepo tooling |
+| | Docker Compose | **2.x** | Simple deployment (no Kubernetes) |
 | | ESLint | **8.55.x** | Code linting |
 | | Prettier | **3.1.x** | Code formatting |
 | | Husky | **8.0.x** | Git hooks |
 | | commitlint | **17.8.x** | Commit message linting |
-| **Infrastructure** | Terraform | **1.6.x** | Infrastructure as Code |
-| | Azure CLI | **2.54.x** | Cloud CLI |
-| | Kubernetes (AKS) | **1.28** | Container orchestration |
-| | NGINX Ingress Controller | **1.9.x** | Load balancing |
-| | Cert-Manager | **1.14.x** | TLS certificate management |
-| **Observability** | Prometheus | **2.47** | Metrics collection |
-| | Grafana | **10.2** | Metrics visualization |
-| | OpenTelemetry Collector | **0.91** | Telemetry collection |
 
-> Types are handled via Zod + explicit TS interfaces; no ORM code‑gen required.
+> Types are handled via Zod + explicit TS interfaces; no ORM required. Single-page app architecture with state-based views instead of routing.
 
 ### 0.1 · Module System Standardization
 
@@ -104,12 +87,10 @@ Relevant **non‑obvious** `package.json` scripts:
   "seed": "node scripts/seed.js",
   "migrate": "node-pg-migrate -d $DATABASE_URL -m migrations",
   "check-db": "node scripts/check-db.js",
-  // testing layers
-  "test": "npm run test:unit && npm run test:api",
+  // testing layers (unified Vitest)
+  "test": "vitest run",
   "test:unit": "vitest run",
-  "test:api": "jest --runInBand",
-  "test:e2e": "playwright test",
-  "test:all": "npm-run-all -s test:unit test:api test:e2e"
+  "test:e2e": "playwright test"
 }
 ```
 
@@ -137,7 +118,7 @@ The Vite build requires an HTML entry point at project root:
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Restaurant Explorer</title>
+    <title>PetBnB - Pet Sitting Marketplace</title>
   </head>
   <body>
     <div id="root"></div>
@@ -201,20 +182,79 @@ touch public/favicon.ico     # Required placeholder favicon
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE TABLE restaurants (
+
+-- Users table (both pet owners and sitters)
+CREATE TABLE users (
   id            SERIAL PRIMARY KEY,
-  rank          INT    UNIQUE NOT NULL,
-  name          TEXT   NOT NULL,
-  city          TEXT   NOT NULL,
-  address       TEXT   NOT NULL,
-  cuisine_type  TEXT   NOT NULL,
-  specialty     TEXT   NOT NULL,
-  yelp_rating   NUMERIC(2,1),
-  price_range   TEXT,
-  image_url     TEXT,
-  location      geometry(Point, 4326)
+  email         TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL CHECK (role IN ('owner', 'sitter', 'both')),
+  first_name    TEXT NOT NULL,
+  last_name     TEXT NOT NULL,
+  phone         TEXT,
+  created_at    TIMESTAMP DEFAULT NOW(),
+  updated_at    TIMESTAMP DEFAULT NOW()
 );
-CREATE INDEX restaurants_location_gix ON restaurants USING GIST (location);
+
+-- Pet sitters table
+CREATE TABLE sitters (
+  id            SERIAL PRIMARY KEY,
+  user_id       INT REFERENCES users(id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  hourly_rate   DECIMAL(10,2),
+  daily_rate    DECIMAL(10,2),
+  location      geometry(Point, 4326),
+  address       TEXT,
+  city          TEXT,
+  available     BOOLEAN DEFAULT true,
+  image_url     TEXT,
+  rating        NUMERIC(2,1) DEFAULT 0,
+  review_count  INT DEFAULT 0,
+  created_at    TIMESTAMP DEFAULT NOW(),
+  updated_at    TIMESTAMP DEFAULT NOW()
+);
+
+-- Pets table
+CREATE TABLE pets (
+  id            SERIAL PRIMARY KEY,
+  owner_id      INT REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  type          TEXT NOT NULL, -- dog, cat, bird, etc.
+  breed         TEXT,
+  age           INT,
+  size          TEXT CHECK (size IN ('small', 'medium', 'large')),
+  description   TEXT,
+  special_needs TEXT,
+  image_url     TEXT,
+  created_at    TIMESTAMP DEFAULT NOW()
+);
+
+-- Bookings table
+CREATE TABLE bookings (
+  id            SERIAL PRIMARY KEY,
+  owner_id      INT REFERENCES users(id) ON DELETE CASCADE,
+  sitter_id     INT REFERENCES sitters(id) ON DELETE CASCADE,
+  pet_id        INT REFERENCES pets(id) ON DELETE CASCADE,
+  start_date    DATE NOT NULL,
+  end_date      DATE NOT NULL,
+  status        TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+  total_amount  DECIMAL(10,2),
+  notes         TEXT,
+  created_at    TIMESTAMP DEFAULT NOW(),
+  updated_at    TIMESTAMP DEFAULT NOW()
+);
+
+-- Spatial index for sitter location searches
+CREATE INDEX sitters_location_gix ON sitters USING GIST (location);
+
+-- Other useful indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_sitters_user_id ON sitters(user_id);
+CREATE INDEX idx_pets_owner_id ON pets(owner_id);
+CREATE INDEX idx_bookings_owner_id ON bookings(owner_id);
+CREATE INDEX idx_bookings_sitter_id ON bookings(sitter_id);
+CREATE INDEX idx_bookings_dates ON bookings(start_date, end_date);
 ```
 
 Run locally or in CI:
@@ -223,46 +263,56 @@ Run locally or in CI:
 npm run migrate   # picks up all *.sql files in migrations/
 ```
 
-#### 2.2 Seed script — **Pure JS batch INSERT (no temp table)**
+#### 2.2 Seed script — **Pure JS batch INSERT for PetBnB data**
 
 ```js
-import { readFileSync } from 'fs';
-import { parse } from 'csv-parse/sync';
 import { Pool } from 'pg';
+import bcrypt from 'bcrypt';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const csv = readFileSync('data/table.csv', 'utf8');
-const rows = parse(csv, { columns: true });
 
 (async () => {
-  const text = `INSERT INTO restaurants
-    (rank,name,city,address,cuisine_type,specialty,yelp_rating,price_range,image_url,location)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,ST_SetSRID(ST_GeomFromText($10),4326))
-    ON CONFLICT (rank) DO UPDATE SET
-      name=EXCLUDED.name,
-      city=EXCLUDED.city,
-      address=EXCLUDED.address`;
+  // Sample users (both owners and sitters)
+  const users = [
+    { email: 'alice@example.com', password: 'password123', role: 'sitter', first_name: 'Alice', last_name: 'Johnson', phone: '555-0101' },
+    { email: 'bob@example.com', password: 'password123', role: 'owner', first_name: 'Bob', last_name: 'Smith', phone: '555-0102' },
+    { email: 'carol@example.com', password: 'password123', role: 'both', first_name: 'Carol', last_name: 'Davis', phone: '555-0103' }
+  ];
 
-  for (const r of rows) {
-    const params = [
-      +r.Rank,
-      r['Restaurant Name'],
-      r.Location,
-      r.Address,
-      r['Cuisine Type'],
-      r.Specialty,
-      +r['Yelp Rating'],
-      r['Price Range'],
-      r.Image,
-      r.Coordinates
-    ];
-    await pool.query(text, params);
+  // Insert users with hashed passwords
+  for (const user of users) {
+    const password_hash = await bcrypt.hash(user.password, 10);
+    await pool.query(
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, phone) 
+       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email) DO NOTHING`,
+      [user.email, password_hash, user.role, user.first_name, user.last_name, user.phone]
+    );
   }
+
+  // Sample sitters with Seattle area locations
+  const sitters = [
+    { email: 'alice@example.com', title: 'Experienced Dog Walker', description: 'Love walking dogs in the neighborhood', hourly_rate: 25.00, coordinates: 'POINT(-122.3321 47.6062)' },
+    { email: 'carol@example.com', title: 'Cat & Small Pet Specialist', description: 'Expert care for cats and small animals', daily_rate: 50.00, coordinates: 'POINT(-122.2015 47.6097)' }
+  ];
+
+  for (const sitter of sitters) {
+    const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [sitter.email]);
+    if (userResult.rows.length > 0) {
+      await pool.query(
+        `INSERT INTO sitters (user_id, title, description, hourly_rate, daily_rate, location, city, available) 
+         VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_GeomFromText($6), 4326), $7, $8)
+         ON CONFLICT DO NOTHING`,
+        [userResult.rows[0].id, sitter.title, sitter.description, sitter.hourly_rate, sitter.daily_rate, sitter.coordinates, 'Seattle', true]
+      );
+    }
+  }
+
+  console.log('Seed data inserted successfully');
   await pool.end();
 })();
 ```
 
-> **Edge‑case handled:** Small dataset, so per‑row insert is acceptable; `ON CONFLICT` keeps the seed idempotent without temp tables.
+> **Edge‑case handled:** Passwords are properly hashed; `ON CONFLICT` keeps the seed idempotent for development iterations.
 
 #### 2.3 · Database Verification Script
 
@@ -293,34 +343,35 @@ async function checkDatabase() {
       console.error('PostGIS extension is not installed');
     }
 
-    // Check restaurants table
+    // Check PetBnB tables
     try {
-      const tableCheck = await pool.query(`
-        SELECT table_name FROM information_schema.tables 
-        WHERE table_schema='public' AND table_name='restaurants'
-      `);
-      
-      if (tableCheck.rows.length > 0) {
-        console.log('Restaurants table exists');
+      const tables = ['users', 'sitters', 'pets', 'bookings'];
+      for (const tableName of tables) {
+        const tableCheck = await pool.query(`
+          SELECT table_name FROM information_schema.tables 
+          WHERE table_schema='public' AND table_name=$1
+        `, [tableName]);
         
-        // Count rows
-        const countResult = await pool.query('SELECT COUNT(*) FROM restaurants');
-        console.log(`Restaurants table has ${countResult.rows[0].count} rows`);
-        
-        // Sample spatial data
-        if (countResult.rows[0].count > 0) {
-          const spatialCheck = await pool.query(`
-            SELECT id, name, ST_AsText(location) as wkt_geom
-            FROM restaurants
-            LIMIT 3;
-          `);
-          console.log('Sample spatial data:');
-          spatialCheck.rows.forEach(row => {
-            console.log(` - ${row.id}: ${row.name} at ${row.wkt_geom}`);
-          });
+        if (tableCheck.rows.length > 0) {
+          const countResult = await pool.query(`SELECT COUNT(*) FROM ${tableName}`);
+          console.log(`${tableName} table has ${countResult.rows[0].count} rows`);
+        } else {
+          console.log(`${tableName} table does not exist - run migrations`);
         }
-      } else {
-        console.log('Restaurants table does not exist - run migrations');
+      }
+      
+      // Sample spatial data for sitters
+      const spatialCheck = await pool.query(`
+        SELECT s.id, s.title, ST_AsText(s.location) as wkt_geom
+        FROM sitters s
+        WHERE s.location IS NOT NULL
+        LIMIT 3;
+      `);
+      if (spatialCheck.rows.length > 0) {
+        console.log('Sample sitter locations:');
+        spatialCheck.rows.forEach(row => {
+          console.log(` - ${row.id}: ${row.title} at ${row.wkt_geom}`);
+        });
       }
     } catch (error) {
       console.error('Error checking tables:', error.message);
@@ -368,7 +419,7 @@ app.use((err, _req, res, next) => {
 #### 3.2 Controller Skeleton Using **pg** Pool
 
 ```ts
-// controllers/restaurantController.ts
+// controllers/sittersController.ts
 import { z } from 'zod';
 import { pool } from '../db.js';
 
@@ -382,9 +433,13 @@ export async function nearby(req, res, next) {
   try {
     const { lon, lat, km } = nearbySchema.parse(req.query);
     const { rows } = await pool.query(
-      `SELECT id,name,ST_Distance(location::geography, ST_MakePoint($1,$2)::geography) AS meters
-         FROM restaurants
-        WHERE ST_DWithin(location::geography, ST_MakePoint($1,$2)::geography, $3*1000)
+      `SELECT s.id, s.title, s.description, s.hourly_rate, s.daily_rate, s.rating, s.available,
+              u.first_name, u.last_name,
+              ST_Distance(s.location::geography, ST_MakePoint($1,$2)::geography) AS meters
+         FROM sitters s
+         JOIN users u ON s.user_id = u.id
+        WHERE s.available = true 
+          AND ST_DWithin(s.location::geography, ST_MakePoint($1,$2)::geography, $3*1000)
         ORDER BY meters`,
       [lon, lat, km]
     );
@@ -549,9 +604,9 @@ export function useCluster(map: L.Map | null, data: Restaurant[]) {
 
 ```ts
 import useSWR from 'swr';
-export function useNearbyRestaurants(lon:number,lat:number,km=5){
-  const { data, error } = useSWR(`/api/restaurants/nearby?lon=${lon}&lat=${lat}&km=${km}`, fetcher);
-  return { restaurants:data ?? [], loading:!error&&!data, error };
+export function useNearbySitters(lon:number,lat:number,km=5){
+  const { data, error } = useSWR(`/api/sitters/nearby?lon=${lon}&lat=${lat}&km=${km}`, fetcher);
+  return { sitters:data ?? [], loading:!error&&!data, error };
 }
 ```
 
@@ -578,8 +633,8 @@ export function useNearbyRestaurants(lon:number,lat:number,km=5){
 
 ##### Unit — Front‑end
 
-1. **RestaurantCard renders essential fields** given minimal props.
-2. **`useNearbyRestaurants` hook** → returns `loading` then populated array (MSW).
+1. **SitterCard renders essential fields** given minimal props.
+2. **`useNearbySitters` hook** → returns `loading` then populated array (MSW).
 3. **Leaflet icon fix** module runs without throwing in JSDOM.
 
 ##### Unit — Back‑end
@@ -590,20 +645,20 @@ export function useNearbyRestaurants(lon:number,lat:number,km=5){
 
 ##### Integration API/DB
 
-1. **Happy path**: `GET /api/restaurants/nearby` with seed coords returns 200 + ≥ 1 row.
+1. **Happy path**: `GET /api/sitters/nearby` with seed coords returns 200 + ≥ 1 row.
 2. **Distance ordering**: ensure first row `meters` < second row.
 3. **Bad query param** (missing lat) → 400.
 
 ##### Integration UI/API
 
 1. On network failure MSW returns 500 → hook exposes `error` and component shows alert banner.
-2. Changing radius km re‑fires fetch (SWR key change) and updates marker count.
+2. Changing radius km re‑fires fetch (SWR key change) and updates sitter marker count.
 
 ##### E2E (Playwright)
 
 1. Landing page loads within 5 s → map tiles visible.
-2. Marker click opens popup with matching restaurant name.
-3. Fill "Add Restaurant" modal → submit → toast 'Created!' appears and new marker exists.
+2. Marker click opens popup with matching sitter name and rates.
+3. Fill "Add Sitter Profile" modal → submit → toast 'Created!' appears and new marker exists.
 4. Hard refresh → new marker persists (DB round‑trip).
 
 > Mark these bullets off in Jira/Issues; coverage threshold is met when all listed tests are green.
@@ -699,6 +754,11 @@ describe('API Tests', () => {
   it('GET /api/health returns 200', async () => {
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
+  });
+  
+  it('GET /api/sitters/nearby validates required params', async () => {
+    const res = await request(app).get('/api/sitters/nearby');
+    expect(res.status).toBe(400);
   });
 });
 ```
@@ -819,142 +879,5 @@ Create a detailed guide for database setup and troubleshooting:
 
 ---
 
-## Part 3 • Outstanding Questions & Decisions Required
-
-Based on analysis of the current codebase versus the implementation plan, the following questions must be resolved before coding begins:
-
-### 1. Core Architecture Decisions
-
-**Q1.1: Backend Framework Choice** ✅ RESOLVED
-- Current: Express 5.0.0-rc.1 with raw SQL/pg driver
-- Planned: NestJS 10.3.x with Prisma ORM
-- **Decision**: Keep Express-based approach due to lack of PostGIS support in Prisma
-- **Impact**: Continue with current Express + raw SQL architecture
-
-**Q1.2: Package Manager Standardization** ✅ RESOLVED
-- Current: npm (evidenced by package-lock.json)
-- Planned: pnpm 8.10.x
-- **Decision**: Stay with npm
-- **Impact**: Update plan to use npm throughout
-
-**Q1.3: React Version Alignment** ✅ RESOLVED
-- Current: React 18.0.0 
-- Planned: React 18.2.x
-- **Decision**: Keep current version (18.0.0) due to version mismatch issues
-- **Impact**: Update plan to use React 18.0.0
-
-### 2. Domain & Data Model Questions
-
-**Q2.1: Complete Domain Migration Strategy** ✅ RESOLVED
-- Current: Restaurant discovery with Asian cuisine focus
-- Planned: Pet sitting marketplace
-- **Decision**: Complete database schema replacement
-- **Impact**: Replace entire schema with PetBnB-specific tables (users, sitters, pets, bookings, etc.)
-
-**Q2.2: Spatial Data Requirements for PetBnB** ✅ RESOLVED
-- Current: PostGIS setup optimized for restaurant locations
-- **Decision**: Keep PostGIS for location-based sitter discovery
-- **Impact**: Continue using PostGIS for spatial queries, distance searches, and geographic features
-
-### 3. Frontend Architecture Decisions
-
-**Q3.1: State Management Strategy** ✅ RESOLVED
-- Current: SWR 2.2.4 for data fetching, no global state
-- Planned: Zustand 4.4.x + React Query 5.21.x
-- **Decision**: Keep current SWR implementation - we know it works
-- **Impact**: Continue with SWR for data fetching, add simple state management as needed
-
-**Q3.2: Styling Framework Migration** ✅ RESOLVED
-- Current: Plain CSS files
-- Planned: Tailwind CSS 3.4.x
-- **Decision**: Migrate to Tailwind CSS
-- **Impact**: Replace CSS files with Tailwind classes for all components
-
-**Q3.3: Routing Implementation** ✅ RESOLVED
-- Current: Single-page app with no routing
-- Planned: React Router 6.14.x
-- **Decision**: Keep single-page for simplicity
-- **Impact**: Use modal overlays and state-based views instead of routing
-
-### 4. Testing Strategy Alignment
-
-**Q4.1: Test Framework Consolidation** ✅ RESOLVED
-- Current: Unified Vitest setup (corrected from earlier analysis)
-- Planned: Vitest for frontend, Jest for backend
-- **Decision**: Keep unified Vitest approach
-- **Impact**: Continue with single test framework for consistency
-
-**Q4.2: Database Testing Approach** ✅ RESOLVED
-- Current: Basic API tests without testcontainers
-- Planned: testcontainers for PostGIS integration tests
-- **Decision**: Keep current simpler testing approach
-- **Impact**: Continue with basic API tests, avoid testcontainers complexity
-
-### 5. Infrastructure & Deployment Questions
-
-**Q5.1: Vite Version Strategy** ✅ RESOLVED
-- Current: Vite 6.0.0 (bleeding edge)
-- Planned: Vite 5.0.x (stable)
-- **Decision**: Keep current Vite 6.0.0 - we know the current stack all works together
-- **Impact**: Continue with bleeding edge but proven working configuration
-
-**Q5.2: Docker & Deployment Strategy** ✅ RESOLVED
-- Current: Simple Docker Compose setup
-- Planned: Azure Kubernetes Service with complex infrastructure
-- **Decision**: Keep current simple Docker Compose setup
-- **Impact**: Start simple and scale up deployment complexity later
-
-### 6. Business Logic & Features
-
-**Q6.1: Authentication & Authorization** ✅ RESOLVED
-- Current: No auth system
-- Planned: Passport.js + CASL
-- **Decision**: Email/password authentication for now
-- **Impact**: Implement simple email/password auth with role-based permissions (sitters vs pet owners)
-
-**Q6.2: Payment Processing** ✅ RESOLVED
-- Not mentioned in current plan
-- **Decision**: Skip payment processing for MVP
-- **Impact**: Focus on core sitter discovery and booking flow without payments
-
-**Q6.3: Communication Features** ✅ RESOLVED
-- Not specified in plan
-- **Decision**: Skip communication features for MVP
-- **Impact**: Focus on core functionality without messaging system
-
-### 7. Migration Strategy Questions
-
-**Q7.1: Implementation Phase Approach** ✅ RESOLVED
-- **Option A**: Complete rewrite following plan exactly
-- **Option B**: Incremental migration keeping working pieces
-- **Option C**: Hybrid approach adapting plan to current foundation
-- **Decision**: Option C - Hybrid approach adapting plan to current foundation
-- **Impact**: Keep proven stack components, replace domain-specific code
-
-**Q7.2: Development Timeline** ✅ RESOLVED
-- Current 5-week milestone plan may be optimistic given scope changes
-- **Decision**: AI implementation - timeline will be much faster than 5 weeks
-- **Impact**: Focus on iterative implementation with immediate feedback cycles
-
-### 8. Data & Compliance
-
-**Q8.1: Data Privacy & Compliance** ✅ RESOLVED
-- Pet sitting involves personal information and home access
-- **Decision**: Keep simple for MVP
-- **Impact**: Basic data handling without complex compliance features for now
-
-### ✅ ALL DECISIONS RESOLVED - READY TO IMPLEMENT
-
-**Implementation Summary:**
-- **Backend**: Keep Express + raw SQL/PostGIS (no NestJS/Prisma)
-- **Frontend**: Keep current React 18.0.0 + Vite 6.0.0 + SWR, add Tailwind CSS
-- **Architecture**: Single-page app, email/password auth, skip payments/messaging for MVP
-- **Testing**: Unified Vitest, simple approach without testcontainers
-- **Deployment**: Keep Docker Compose, skip Kubernetes complexity
-- **Approach**: Hybrid - keep proven stack, replace restaurant domain with PetBnB
-
-**Next Steps**: Begin implementing PetBnB domain on the proven technical foundation.
-
----
 
 **End of Implementation Plan**
