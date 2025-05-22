@@ -12,17 +12,47 @@
 
 ### 0 · Locked‑In Versions (revised 2025‑05‑15)
 
-| Layer               | Version        | Notes                                                |
-| ------------------- | -------------- | ---------------------------------------------------- |
-| PostgreSQL          | **15.5**       | LTS; pairs with PostGIS in `postgis/postgis:15-3.4`. |
-| PostGIS             | **3.4.2**      | Green in upstream matrix.                            |
-| **node‑pg‑migrate** | **8.x**        | Simple, SQL‑file migrations, zero ORM.               |
-| **pg** driver       | **8.x**        | Raw queries + pool.                                  |
-| Node.js             | **20 LTS**     | Required by Vite 6 / Express 5.                      |
-| Vite                | **6.0.0**      | Bundler/dev‑server.                                  |
-| Vitest              | **3.0.0**      | First version for Vite 6.                            |
-| React               | **19 RC**      | Works with `@vitejs/plugin-react-swc`.               |
-| Express             | **5.0.0‑rc.1** | Promise router; Node ≥ 18.                           |
+| Domain / Layer | Component | Pinned Version | Notes |
+|----------------|-----------|----------------|-------|
+| **Core Runtime** | Node.js | **20.11.x LTS** | Required by Vite 6 / Express 5 |
+| | TypeScript | **5.3.x** | Compiler and type checking |
+| | pnpm | **8.10.x** | Package manager |
+| **Front-End** | React | **18.2.x** | UI framework (production-ready) |
+| | Vite | **5.0.x** | Bundler/dev‑server |
+| | Zustand | **4.4.x** | State management |
+| | React Query | **5.21.x** | Server state management |
+| | Tailwind CSS | **3.4.x** | CSS framework |
+| | React Hook Form | **7.45.x** | Form handling |
+| | Zod | **3.22.x** | Runtime validation |
+| | React Router | **6.14.x** | Client-side routing |
+| | Vitest | **1.4.x** | Unit testing |
+| | Playwright | **1.42.x** | E2E testing |
+| **Back-End** | NestJS | **10.3.x** | Node.js framework |
+| | Prisma ORM | **5.10.x** | Database ORM |
+| | class-validator | **0.14.x** | Validation |
+| | class-transformer | **0.5.x** | Data transformation |
+| | Passport.js | **0.7.x** | Authentication |
+| | CASL | **6.6.x** | Authorization |
+| | Jest | **29.7.x** | Testing framework |
+| | Supertest | **6.4.x** | HTTP testing |
+| **Data Stores** | PostgreSQL | **15.4** | Primary database |
+| | PostGIS | **3.4** | Spatial extensions |
+| | Redis | **7.2** | Caching layer |
+| | OpenSearch | **2.12** | Search engine (optional) |
+| **DevOps / Tooling** | Docker Engine | **24.0.x** | Containerization |
+| | Nx | **17.5.x** | Monorepo tooling |
+| | ESLint | **8.55.x** | Code linting |
+| | Prettier | **3.1.x** | Code formatting |
+| | Husky | **8.0.x** | Git hooks |
+| | commitlint | **17.8.x** | Commit message linting |
+| **Infrastructure** | Terraform | **1.6.x** | Infrastructure as Code |
+| | Azure CLI | **2.54.x** | Cloud CLI |
+| | Kubernetes (AKS) | **1.28** | Container orchestration |
+| | NGINX Ingress Controller | **1.9.x** | Load balancing |
+| | Cert-Manager | **1.14.x** | TLS certificate management |
+| **Observability** | Prometheus | **2.47** | Metrics collection |
+| | Grafana | **10.2** | Metrics visualization |
+| | OpenTelemetry Collector | **0.91** | Telemetry collection |
 
 > Types are handled via Zod + explicit TS interfaces; no ORM code‑gen required.
 
@@ -785,9 +815,146 @@ Create a detailed guide for database setup and troubleshooting:
   docker-compose up -d postgres
   npm run migrate
   npm run seed
-  ```
 ```
 
 ---
 
-**End of Implementation Plan**\*\*\*\*
+## Part 3 • Outstanding Questions & Decisions Required
+
+Based on analysis of the current codebase versus the implementation plan, the following questions must be resolved before coding begins:
+
+### 1. Core Architecture Decisions
+
+**Q1.1: Backend Framework Choice** ✅ RESOLVED
+- Current: Express 5.0.0-rc.1 with raw SQL/pg driver
+- Planned: NestJS 10.3.x with Prisma ORM
+- **Decision**: Keep Express-based approach due to lack of PostGIS support in Prisma
+- **Impact**: Continue with current Express + raw SQL architecture
+
+**Q1.2: Package Manager Standardization** ✅ RESOLVED
+- Current: npm (evidenced by package-lock.json)
+- Planned: pnpm 8.10.x
+- **Decision**: Stay with npm
+- **Impact**: Update plan to use npm throughout
+
+**Q1.3: React Version Alignment** ✅ RESOLVED
+- Current: React 18.0.0 
+- Planned: React 18.2.x
+- **Decision**: Keep current version (18.0.0) due to version mismatch issues
+- **Impact**: Update plan to use React 18.0.0
+
+### 2. Domain & Data Model Questions
+
+**Q2.1: Complete Domain Migration Strategy** ✅ RESOLVED
+- Current: Restaurant discovery with Asian cuisine focus
+- Planned: Pet sitting marketplace
+- **Decision**: Complete database schema replacement
+- **Impact**: Replace entire schema with PetBnB-specific tables (users, sitters, pets, bookings, etc.)
+
+**Q2.2: Spatial Data Requirements for PetBnB** ✅ RESOLVED
+- Current: PostGIS setup optimized for restaurant locations
+- **Decision**: Keep PostGIS for location-based sitter discovery
+- **Impact**: Continue using PostGIS for spatial queries, distance searches, and geographic features
+
+### 3. Frontend Architecture Decisions
+
+**Q3.1: State Management Strategy** ✅ RESOLVED
+- Current: SWR 2.2.4 for data fetching, no global state
+- Planned: Zustand 4.4.x + React Query 5.21.x
+- **Decision**: Keep current SWR implementation - we know it works
+- **Impact**: Continue with SWR for data fetching, add simple state management as needed
+
+**Q3.2: Styling Framework Migration** ✅ RESOLVED
+- Current: Plain CSS files
+- Planned: Tailwind CSS 3.4.x
+- **Decision**: Migrate to Tailwind CSS
+- **Impact**: Replace CSS files with Tailwind classes for all components
+
+**Q3.3: Routing Implementation** ✅ RESOLVED
+- Current: Single-page app with no routing
+- Planned: React Router 6.14.x
+- **Decision**: Keep single-page for simplicity
+- **Impact**: Use modal overlays and state-based views instead of routing
+
+### 4. Testing Strategy Alignment
+
+**Q4.1: Test Framework Consolidation** ✅ RESOLVED
+- Current: Unified Vitest setup (corrected from earlier analysis)
+- Planned: Vitest for frontend, Jest for backend
+- **Decision**: Keep unified Vitest approach
+- **Impact**: Continue with single test framework for consistency
+
+**Q4.2: Database Testing Approach** ✅ RESOLVED
+- Current: Basic API tests without testcontainers
+- Planned: testcontainers for PostGIS integration tests
+- **Decision**: Keep current simpler testing approach
+- **Impact**: Continue with basic API tests, avoid testcontainers complexity
+
+### 5. Infrastructure & Deployment Questions
+
+**Q5.1: Vite Version Strategy** ✅ RESOLVED
+- Current: Vite 6.0.0 (bleeding edge)
+- Planned: Vite 5.0.x (stable)
+- **Decision**: Keep current Vite 6.0.0 - we know the current stack all works together
+- **Impact**: Continue with bleeding edge but proven working configuration
+
+**Q5.2: Docker & Deployment Strategy** ✅ RESOLVED
+- Current: Simple Docker Compose setup
+- Planned: Azure Kubernetes Service with complex infrastructure
+- **Decision**: Keep current simple Docker Compose setup
+- **Impact**: Start simple and scale up deployment complexity later
+
+### 6. Business Logic & Features
+
+**Q6.1: Authentication & Authorization** ✅ RESOLVED
+- Current: No auth system
+- Planned: Passport.js + CASL
+- **Decision**: Email/password authentication for now
+- **Impact**: Implement simple email/password auth with role-based permissions (sitters vs pet owners)
+
+**Q6.2: Payment Processing** ✅ RESOLVED
+- Not mentioned in current plan
+- **Decision**: Skip payment processing for MVP
+- **Impact**: Focus on core sitter discovery and booking flow without payments
+
+**Q6.3: Communication Features** ✅ RESOLVED
+- Not specified in plan
+- **Decision**: Skip communication features for MVP
+- **Impact**: Focus on core functionality without messaging system
+
+### 7. Migration Strategy Questions
+
+**Q7.1: Implementation Phase Approach** ✅ RESOLVED
+- **Option A**: Complete rewrite following plan exactly
+- **Option B**: Incremental migration keeping working pieces
+- **Option C**: Hybrid approach adapting plan to current foundation
+- **Decision**: Option C - Hybrid approach adapting plan to current foundation
+- **Impact**: Keep proven stack components, replace domain-specific code
+
+**Q7.2: Development Timeline** ✅ RESOLVED
+- Current 5-week milestone plan may be optimistic given scope changes
+- **Decision**: AI implementation - timeline will be much faster than 5 weeks
+- **Impact**: Focus on iterative implementation with immediate feedback cycles
+
+### 8. Data & Compliance
+
+**Q8.1: Data Privacy & Compliance** ✅ RESOLVED
+- Pet sitting involves personal information and home access
+- **Decision**: Keep simple for MVP
+- **Impact**: Basic data handling without complex compliance features for now
+
+### ✅ ALL DECISIONS RESOLVED - READY TO IMPLEMENT
+
+**Implementation Summary:**
+- **Backend**: Keep Express + raw SQL/PostGIS (no NestJS/Prisma)
+- **Frontend**: Keep current React 18.0.0 + Vite 6.0.0 + SWR, add Tailwind CSS
+- **Architecture**: Single-page app, email/password auth, skip payments/messaging for MVP
+- **Testing**: Unified Vitest, simple approach without testcontainers
+- **Deployment**: Keep Docker Compose, skip Kubernetes complexity
+- **Approach**: Hybrid - keep proven stack, replace restaurant domain with PetBnB
+
+**Next Steps**: Begin implementing PetBnB domain on the proven technical foundation.
+
+---
+
+**End of Implementation Plan**
