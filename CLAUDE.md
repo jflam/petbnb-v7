@@ -21,6 +21,8 @@ This is a full-stack application template with spatial data capabilities using:
 ### Database
 - `npm run migrate` - Run database migrations (requires DATABASE_URL)
 - `npm run seed` - Seed the database with sample data
+- `npm run db:reset` - Reset database: rollback all migrations and run them fresh
+- `npm run db:reset:seed` - Reset database and seed with sample data
 
 ### Building
 - `npm run build` - Build both client and server
@@ -37,10 +39,11 @@ This is a full-stack application template with spatial data capabilities using:
 
 - `/migrations/` - SQL migration files
 - `/scripts/seed-consolidated.ts` - Database seeding script (uses data from `/data/` directory)
+- `/scripts/reset-db.ts` - Database reset script (clean slate + fresh migrations)
 - `/data/seeds/` - Authoritative seed data (sitters.js, owners.js)
 - `/data/table.csv` - Restaurant data for seeding
-- `/src/server/db.ts` - PostgreSQL connection pool
-- `/src/server/controllers/` - Express route controllers
+- `/src/server/db.js` - PostgreSQL connection pool
+- `/src/server/simplified-server.js` - Express server with API routes
 - `/src/client/components/` - React components
 
 ## PostGIS Usage Patterns
@@ -104,3 +107,5 @@ When working with spatial data:
 - The Leaflet marker icons need the special fix in the implementation plan
 - Ensure proper CORS setup when testing the frontend against backend
 - Make sure environment variables are properly set in .env file
+- Use `npm run db:reset` when you need a completely clean database state
+- Database reset requires the database to be running (start with `docker-compose up -d postgres`)

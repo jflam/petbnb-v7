@@ -1,8 +1,7 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
-import { readFileSync } from 'fs';
-import { parse } from 'csv-parse/sync';
+// Note: Restaurant seeding removed as it's not part of PetBnB application
 
 // Import seed data from data directory
 import { seattleSitters, austinSitters } from '../data/seeds/sitters.js';
@@ -79,37 +78,7 @@ async function seedSitters() {
   }
 }
 
-async function seedRestaurants() {
-  console.log('Inserting restaurants...');
-  
-  const csv = readFileSync('data/table.csv', 'utf8');
-  const rows: any[] = parse(csv, { columns: true });
-  
-  const text = `INSERT INTO restaurants
-    (rank,name,city,address,cuisine_type,specialty,yelp_rating,price_range,image_url,location)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,ST_SetSRID(ST_GeomFromText($10),4326))
-    ON CONFLICT (rank) DO UPDATE SET
-      name=EXCLUDED.name,
-      city=EXCLUDED.city,
-      address=EXCLUDED.address`;
-
-  for (const r of rows) {
-    const params = [
-      +r.Rank,
-      r['Restaurant Name'],
-      r.Location,
-      r.Address,
-      r['Cuisine Type'],
-      r.Specialty,
-      +r['Yelp Rating'],
-      r['Price Range'],
-      r.Image,
-      r.Coordinates
-    ];
-    await pool.query(text, params);
-    console.log(`Inserted restaurant: ${r['Restaurant Name']}`);
-  }
-}
+// Restaurant seeding removed - not part of PetBnB application
 
 (async () => {
   try {
@@ -117,7 +86,6 @@ async function seedRestaurants() {
     
     await seedUsers();
     await seedSitters();
-    await seedRestaurants();
     
     console.log('Consolidated seed data inserted successfully');
   } catch (error) {
