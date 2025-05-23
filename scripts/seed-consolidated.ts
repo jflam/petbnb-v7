@@ -53,13 +53,12 @@ async function seedSitters() {
     const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [sitterData.user.email]);
     if (userResult.rows.length > 0) {
       const profile = sitterData.profile;
-      const coordinates = `POINT(${profile.longitude} ${profile.latitude})`;
       
       await pool.query(
         `INSERT INTO sitters (
           user_id, title, description, hourly_rate, daily_rate, location, 
           address, city, available
-        ) VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_GeomFromText($6), 4326), $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT DO NOTHING`,
         [
           userResult.rows[0].id,
@@ -67,7 +66,7 @@ async function seedSitters() {
           `${profile.bio}\n\nExperience: ${profile.experience}`,
           profile.hourlyRate,
           null, // No daily rate in the new data structure
-          coordinates,
+          null, // Location will be geocoded lazily
           profile.address,
           profile.city,
           true

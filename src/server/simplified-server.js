@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { pool } from './db.js';
+import { ensureSitterLocation } from './geocoding.js';
 import { z } from 'zod';
 import * as dotenv from 'dotenv';
 
@@ -92,7 +93,7 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-// Get all sitters
+// Get all sitters (with lazy geocoding)
 app.get('/api/sitters', async (_req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -107,29 +108,20 @@ app.get('/api/sitters', async (_req, res) => {
       ORDER BY s.rating DESC, s.review_count DESC
     `);
 
-    const results = rows.map(row => ({
-      ...row,
-      location: row.location_geojson ? JSON.parse(row.location_geojson) : null,
-      location_geojson: undefined
-    }));
+    // Process each sitter to ensure they have coordinates
+    const results = await Promise.all(
+      rows.map(async (row) => await ensureSitterLocation(row))
+    );
     
     res.json(results);
   } catch (error) {
     console.error('Error querying sitters:', error);
-    res.json([
-      {
-        id: 1,
-        title: 'Dog Walker (Mock)',
-        first_name: 'Test',
-        last_name: 'Sitter',
-        city: 'Seattle',
-        hourly_rate: 25.00,
-        location: {
-          type: 'Point',
-          coordinates: [-122.3321, 47.6062]
-        }
+    res.status(500).json({
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Failed to fetch sitters'
       }
-    ]);
+    });
   }
 });
 
@@ -138,7 +130,8 @@ app.get('/api/sitters/nearby', async (req, res) => {
   try {
     const { lon, lat, km } = nearbySchema.parse(req.query);
     
-    const { rows } = await pool.query(`
+    // First, get sitters that already have coordinates
+    const { rows: locatedSitters } = await pool.query(`
       SELECT 
         s.id, s.title, s.description, s.hourly_rate, s.daily_rate,
         s.address, s.city, s.available, s.image_url, s.rating, s.review_count,
@@ -148,18 +141,64 @@ app.get('/api/sitters/nearby', async (req, res) => {
       FROM sitters s
       JOIN users u ON s.user_id = u.id
       WHERE s.available = true 
+        AND s.location IS NOT NULL
         AND ST_DWithin(s.location::geography, ST_MakePoint($1,$2)::geography, $3*1000)
       ORDER BY meters
     `, [lon, lat, km]);
     
-    const results = rows.map(row => ({
+    // Also get sitters without coordinates for potential geocoding
+    const { rows: unlocatedSitters } = await pool.query(`
+      SELECT 
+        s.id, s.title, s.description, s.hourly_rate, s.daily_rate,
+        s.address, s.city, s.available, s.image_url, s.rating, s.review_count,
+        u.first_name, u.last_name, u.phone,
+        ST_AsGeoJSON(s.location) as location_geojson
+      FROM sitters s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.available = true 
+        AND s.location IS NULL
+        AND s.address IS NOT NULL
+      LIMIT 5
+    `);
+    
+    // Process located sitters
+    const locatedResults = locatedSitters.map(row => ({
       ...row,
       meters: Math.round(row.meters),
       location: row.location_geojson ? JSON.parse(row.location_geojson) : null,
       location_geojson: undefined
     }));
     
-    res.json(results);
+    // Try to geocode up to 5 unlocated sitters and check if they're nearby
+    const geocodedResults = [];
+    for (const sitter of unlocatedSitters) {
+      const sitterWithLocation = await ensureSitterLocation(sitter);
+      if (sitterWithLocation.location) {
+        // Calculate distance after geocoding
+        const distanceQuery = await pool.query(`
+          SELECT ST_Distance(ST_MakePoint($1,$2)::geography, ST_MakePoint($3,$4)::geography) AS meters
+        `, [
+          sitterWithLocation.location.coordinates[0], 
+          sitterWithLocation.location.coordinates[1],
+          lon, 
+          lat
+        ]);
+        
+        const meters = Math.round(distanceQuery.rows[0].meters);
+        if (meters <= km * 1000) {
+          geocodedResults.push({
+            ...sitterWithLocation,
+            meters
+          });
+        }
+      }
+    }
+    
+    // Combine and sort results
+    const allResults = [...locatedResults, ...geocodedResults]
+      .sort((a, b) => a.meters - b.meters);
+    
+    res.json(allResults);
   } catch (error) {
     console.error('Error querying nearby sitters:', error);
     if (error instanceof z.ZodError) {

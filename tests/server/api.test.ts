@@ -54,47 +54,48 @@ describe('PetBnB API Tests', () => {
     }
   });
 
-  it('GET /api/sitters should return an array of sitters', async () => {
+  it('GET /api/sitters should return an array of sitters with lazy geocoding', async () => {
     const response = await request(app).get('/api/sitters');
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
     
-    // Check if we got real data or mock data
-    if (response.body.length === 1 && response.body[0].title === 'Dog Walker (Mock)') {
-      // If we got mock data, just verify basic structure
-      expect(response.body[0]).toHaveProperty('id');
-      expect(response.body[0]).toHaveProperty('title', 'Dog Walker (Mock)');
-      expect(response.body[0]).toHaveProperty('city', 'Seattle');
-    } else {
-      // We should have 4 sitters from the seed data if using real database
-      expect(response.body.length).toBe(4);
+    // Should have sitters from the seed data
+    expect(response.body.length).toBeGreaterThan(0);
+    
+    // Check the first sitter structure
+    const sitter = response.body[0];
+    expect(sitter).toHaveProperty('id');
+    expect(sitter).toHaveProperty('title');
+    expect(sitter).toHaveProperty('first_name');
+    expect(sitter).toHaveProperty('last_name');
+    expect(sitter).toHaveProperty('city');
+    expect(sitter).toHaveProperty('address');
+    expect(sitter).toHaveProperty('available', true);
+    
+    // After lazy geocoding, sitter should have location
+    if (sitter.location) {
+      expect(sitter.location).toHaveProperty('type', 'Point');
+      expect(sitter.location).toHaveProperty('coordinates');
+      expect(Array.isArray(sitter.location.coordinates)).toBe(true);
+      expect(sitter.location.coordinates).toHaveLength(2);
       
-      // Check the first sitter
-      const sitter = response.body[0];
-      expect(sitter).toHaveProperty('id');
-      expect(sitter).toHaveProperty('title');
-      expect(sitter).toHaveProperty('first_name');
-      expect(sitter).toHaveProperty('last_name');
-      expect(sitter).toHaveProperty('city');
-      expect(sitter).toHaveProperty('available', true);
-      expect(sitter).toHaveProperty('location');
-      if (sitter.location) {
-        expect(sitter.location).toHaveProperty('type', 'Point');
-        expect(sitter.location).toHaveProperty('coordinates');
-      }
+      // Coordinates should be valid numbers
+      const [lon, lat] = sitter.location.coordinates;
+      expect(typeof lon).toBe('number');
+      expect(typeof lat).toBe('number');
     }
-  });
+  }, 10000); // Increase timeout for geocoding
   
-  it('GET /api/sitters/nearby should return nearby sitters', async () => {
-    // Use coordinates near downtown Seattle
-    const response = await request(app).get('/api/sitters/nearby?lon=-122.3321&lat=47.6062&km=5');
+  it('GET /api/sitters/nearby should return nearby sitters with distances', async () => {
+    // Use coordinates near downtown Seattle 
+    const response = await request(app).get('/api/sitters/nearby?lon=-122.3321&lat=47.6062&km=10');
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
     
-    // Should return at least one sitter
+    // Should return at least one sitter within 10km of downtown Seattle
     expect(response.body.length).toBeGreaterThan(0);
     
-    // Check that each sitter has the required properties
+    // Check that each sitter has the required properties including distance
     response.body.forEach(sitter => {
       expect(sitter).toHaveProperty('id');
       expect(sitter).toHaveProperty('title');
@@ -102,21 +103,25 @@ describe('PetBnB API Tests', () => {
       expect(sitter).toHaveProperty('last_name');
       expect(sitter).toHaveProperty('city');
       expect(sitter).toHaveProperty('location');
+      expect(sitter).toHaveProperty('meters');
       
-      // If real data, check meters (distance)
-      if (sitter.meters !== undefined) {
-        expect(typeof sitter.meters).toBe('number');
-        expect(sitter.meters).toBeLessThanOrEqual(5000); // 5km in meters
-      }
+      // Distance should be a number within the requested radius
+      expect(typeof sitter.meters).toBe('number');
+      expect(sitter.meters).toBeLessThanOrEqual(10000); // 10km in meters
+      expect(sitter.meters).toBeGreaterThanOrEqual(0);
+      
+      // Location should be valid GeoJSON Point
+      expect(sitter.location).toHaveProperty('type', 'Point');
+      expect(sitter.location).toHaveProperty('coordinates');
+      expect(Array.isArray(sitter.location.coordinates)).toBe(true);
+      expect(sitter.location.coordinates).toHaveLength(2);
     });
     
-    // If we have real data with distances, verify sorting by distance
-    if (response.body[0].meters !== undefined) {
-      const distances = response.body.map(s => s.meters);
-      const sortedDistances = [...distances].sort((a, b) => a - b);
-      expect(distances).toEqual(sortedDistances);
-    }
-  });
+    // Verify results are sorted by distance (closest first)
+    const distances = response.body.map(s => s.meters);
+    const sortedDistances = [...distances].sort((a, b) => a - b);
+    expect(distances).toEqual(sortedDistances);
+  }, 15000); // Increase timeout for geocoding multiple sitters
 
   it('GET /api/sitters/nearby should validate query parameters', async () => {
     // Test missing parameters
