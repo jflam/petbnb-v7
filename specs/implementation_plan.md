@@ -8,7 +8,7 @@
 
 ---
 
-## Part 2 • Implementation Plan — **What & How (Prisma‑less SQL‑first)**
+## Part 2 • Implementation Plan — **What & How (SQL‑first)**
 
 ### 0 · Locked‑In Versions (revised 2025‑05‑15)
 
@@ -23,10 +23,10 @@
 | | Tailwind CSS | **3.4.x** | CSS framework (new addition) |
 | | React Hook Form | **7.45.x** | Form handling |
 | | Zod | **3.22.x** | Runtime validation |
-| | Vitest | **3.x** | Unified testing framework |
+| | Vitest | **3.x** | Unified testing framework (replaces Jest) |
 | | Playwright | **1.42.x** | E2E testing |
 | **Back-End** | Express | **5.0.0-rc.1** | Node.js framework (keep current) |
-| | pg | **8.x** | Raw SQL PostgreSQL driver |
+| | pg | **8.x** | Raw SQL PostgreSQL driver (no ORM) |
 | | Passport.js | **0.7.x** | Authentication (email/password only) |
 | **Data Stores** | PostgreSQL | **15.4** | Primary database |
 | | PostGIS | **3.4** | Spatial extensions (keep for sitter discovery) |
@@ -614,17 +614,16 @@ export function useNearbySitters(lon:number,lat:number,km=5){
 
 ### 5 · Testing Strategy & CI Pipeline
 
-> **Why testcontainers?** Spatial queries need a live PostGIS backend; unit stubs miss SRID, GiST, and distance‑calculation edge‑cases. A tiny helper (`startPg`) spins an isolated **postgis/postgis:15‑3.4** container, runs migrations + seed, and hands a ready `DATABASE_URL` to each Jest suite. This keeps tests deterministic across dev machines and CI runners.
-> We restore the full multi‑layer test plan.
+> **Unified Testing with Vitest**: This project uses Vitest for all unit and integration tests, with Playwright for E2E tests. Spatial queries are tested against a real PostGIS database to ensure SRID, GiST, and distance calculation accuracy. This unified approach reduces tooling complexity while maintaining comprehensive test coverage.
 
 #### 5.1 Test Matrix
 
 | Layer                  | Tool                                  | Key Cases                                                 |
 | ---------------------- | ------------------------------------- | --------------------------------------------------------- |
 | **Unit — front‑end**   | Vitest 3 + RTL                        | Components render, hooks return correct state.            |
-| **Unit — back‑end**    | Jest 30                               | Validation rejects bad input; SQL builder functions.      |
-| **Integration API/DB** | Jest + Supertest + **testcontainers** | `/nearby` happy‑path, validation 400, SQL‑inject attempt. |
-| **Integration UI/API** | Vitest + MSW                          | Hook displays loading, error, data states.                |
+| **Unit — back‑end**    | Vitest 3                              | Validation rejects bad input; SQL builder functions.      |
+| **Integration API/DB** | Vitest 3 + Real DB                   | `/nearby` happy‑path, validation 400, SQL‑inject attempt. |
+| **Integration UI/API** | Vitest 3 + MSW                       | Hook displays loading, error, data states.                |
 | **E2E**                | Playwright 1.44                       | Map shows 20 seed markers; create‑restaurant flow.        |
 
 #### 5.2 Detailed Test‑Case Checklist
@@ -677,7 +676,7 @@ export async function startPg() {
 }
 ```
 
-Each Jest suite calls `startPg()` in `beforeAll`.
+Each Vitest suite calls `startPg()` in `beforeAll`.
 
 #### 5.4 · Testing Configurations (Complete Details)
 
@@ -719,37 +718,34 @@ afterEach(() => {
 });
 ```
 
-#### Jest for API Tests
+#### Vitest for API Tests
 
-To avoid TypeScript/ESM complications, use plain JavaScript for API tests:
+API tests use the same Vitest configuration with Node.js environment:
 
-```javascript
-// jest.config.js
-module.exports = {
-  testEnvironment: 'node',
-  testMatch: ['**/tests/server/**/*.test.js'],
-  testTimeout: 30000
-};
+```typescript
+// vitest.config.ts (server tests)
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    setupFiles: ['./tests/server/setup.ts'],
+    testTimeout: 30000
+  },
+});
 ```
 
 #### API Test Approach
 
-API tests should use a test-specific Express app to avoid database dependencies:
+API tests use real database connections for accurate PostGIS testing:
 
-```javascript
-// tests/server/api.test.js
-const request = require('supertest');
-const express = require('express');
+```typescript
+// tests/server/api.test.ts
+import { describe, it, expect } from 'vitest';
+import request from 'supertest';
+import { app } from '../../src/server/simplified-server.js';
 
-// Create test-specific app
-const app = express();
-
-// Define minimal test endpoints that mirror production endpoints
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
-});
-
-// Tests
 describe('API Tests', () => {
   it('GET /api/health returns 200', async () => {
     const res = await request(app).get('/api/health');
@@ -770,7 +766,6 @@ describe('API Tests', () => {
   "@testing-library/jest-dom": "^6.4.2",
   "@testing-library/react": "^14.1.2",
   "jsdom": "^24.0.0",
-  "jest": "^29.7.0",
   "supertest": "^6.3.3",
   "vitest": "^3.0.0"
 }
@@ -879,5 +874,109 @@ Create a detailed guide for database setup and troubleshooting:
 
 ---
 
+
+---
+
+## Deviations from Original Plan
+
+This section documents how the current implementation differs from the specifications outlined in this plan.
+
+### Architecture Deviations
+
+#### 1. Simplified Server Structure
+- **Plan**: Modular controller structure (`controllers/sittersController.ts`)
+- **Implementation**: Single `simplified-server.js` file with all endpoints
+- **Rationale**: Faster prototyping for Phase 1, easier to understand and modify
+
+### Feature Additions Not in Plan
+
+#### 1. Lazy Geocoding System
+- **Addition**: Real-time address-to-coordinate conversion using OpenStreetMap Nominatim
+- **Implementation**: Automatic geocoding when coordinates are null, with database caching
+- **Files**: `src/server/geocoding.js`, geocoding tests, PostGIS integration tests
+- **Rationale**: Enables real addresses while maintaining spatial functionality
+
+#### 2. Database Reset Commands
+- **Addition**: Complete database lifecycle management
+- **Implementation**: `npm run db:reset` and `npm run db:reset:seed` commands
+- **Files**: `scripts/reset-db.ts`
+- **Rationale**: Faster development iteration and cleaner testing setup
+
+#### 3. Consolidated Seed Data Management
+- **Addition**: Single authoritative data source structure
+- **Implementation**: `data/seeds/` directory with `scripts/seed-consolidated.ts`
+- **Files**: Removed duplicate seed files, centralized in `data/seeds/`
+- **Rationale**: Eliminates confusion from multiple seed sources
+
+### Development Process Deviations
+
+#### 1. TypeScript Execution
+- **Plan**: Compilation-based TypeScript workflow
+- **Implementation**: Direct TypeScript execution using `tsx`
+- **Rationale**: Faster development without build steps for scripts
+
+#### 2. Real Address Data
+- **Plan**: Mock coordinates in seed data
+- **Implementation**: Real Seattle/Eastside/Austin addresses with null coordinates
+- **Rationale**: More realistic testing and demonstration data
+
+#### 3. Mock-Free Testing Strategy
+- **Plan**: Extensive mocking and testcontainers
+- **Implementation**: Real database testing with fixture data and mock geocoding service
+- **Rationale**: Tests real PostGIS functionality while avoiding external API dependencies
+
+### Technology Stack Adjustments
+
+#### 1. React Version
+- **Plan**: React 19 (RC)
+- **Implementation**: React 18.0.0 (stable)
+- **Rationale**: Production stability over cutting-edge features
+
+#### 2. Module System
+- **Plan**: Complex ESM configuration with subpath imports
+- **Implementation**: Standard ESM with direct imports
+- **Rationale**: Reduced configuration complexity
+
+### Files Not Implemented from Plan
+
+#### 1. Advanced Configurations
+- **Skipped**: Complex TypeScript configurations with Node16 module resolution
+- **Skipped**: Subpath imports in package.json
+- **Skipped**: Dual server implementation strategy
+
+#### 2. Production Features
+- **Skipped**: Rate limiting (`express-rate-limit`)
+- **Skipped**: Structured logging with pino
+- **Skipped**: NDJSON streaming for large datasets
+- **Skipped**: Advanced error handling middleware
+
+#### 3. CI/CD Components
+- **Skipped**: Codecov integration
+- **Skipped**: Docker multi-stage builds
+- **Skipped**: GitHub Actions workflows
+
+### Testing Implementation Differences
+
+#### 1. Database Testing
+- **Plan**: testcontainers with PostGIS containers
+- **Implementation**: Real PostgreSQL database with proper setup/teardown
+- **Rationale**: Simpler setup while still testing real spatial functionality
+
+#### 2. Test Organization
+- **Plan**: Separate test configurations for different layers
+- **Implementation**: Unified test configuration with clear separation by directory
+- **Rationale**: Easier maintenance and consistent tooling
+
+### Current Status vs. Plan Scope
+
+The current implementation successfully delivers:
+- ✅ Full PostGIS spatial functionality
+- ✅ React frontend with Leaflet maps
+- ✅ Real geocoding with address conversion
+- ✅ Comprehensive test coverage
+- ✅ Docker-based development environment
+- ✅ Database migration and seeding
+
+**Phase 1 Complete**: Core functionality working with real data and proper testing infrastructure.
 
 **End of Implementation Plan**
