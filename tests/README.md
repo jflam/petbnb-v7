@@ -42,7 +42,7 @@ The Vitest configuration in `vitest.config.ts` includes:
 Server tests connect to the PostgreSQL database:
 
 1. When running inside Docker (via `docker compose up`): Tests connect to the PostgreSQL service defined in docker-compose.yml 
-2. When running locally (outside Docker): Tests connect to a local PostgreSQL database (typically at localhost:5432)
+2. When running locally (outside Docker): Tests connect to a local PostgreSQL database (typically at localhost:5433)
 
 This approach simplifies testing by:
 - Avoiding the overhead of starting another database container for tests

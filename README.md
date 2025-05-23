@@ -288,7 +288,7 @@ docker-compose logs -f
 docker build -t ai-starter-app-postgis:latest .
 
 # Run container
-docker run -p 3001:3001 -e DATABASE_URL=******host:5432/db ai-starter-app-postgis:latest
+docker run -p 3001:3001 -e DATABASE_URL=******host:5433/db ai-starter-app-postgis:latest
 ```
 
 For detailed Docker setup instructions, container configurations, and production deployment options, see the [Docker Guide](docs/docker.md).

@@ -41,7 +41,7 @@ The development environment includes the following services:
 #### postgres
 
 - Image: `postgis/postgis:15-3.4`
-- Ports: 5432 (accessible from host)
+- Ports: 5433 (accessible from host)
 - Environment variables:
   - `POSTGRES_USER`: postgres
   - `POSTGRES_PASSWORD`: postgres
@@ -55,7 +55,7 @@ The development environment includes the following services:
   - 3001 (Express API)
   - 5173 (Vite dev server)
 - Environment variables:
-  - `DATABASE_URL`: postgres://postgres:postgres@postgres:5432/app_db
+  - `DATABASE_URL`: postgres://postgres:postgres@postgres:5433/app_db
   - `NODE_ENV`: development
   - `PORT`: 3001
 - Dependencies: Waits for postgres service to be healthy
@@ -89,7 +89,7 @@ The Dockerfile uses a multi-stage build:
 
 ```bash
 docker run -p 3001:3001 \
-  -e DATABASE_URL=postgres://user:pass@host:5432/db \
+  -e DATABASE_URL=postgres://user:pass@host:5433/db \
   -e NODE_ENV=production \
   restaurant-app:latest
 ```
@@ -140,7 +140,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5433/${DB_NAME}
       - NODE_ENV=production
       - PORT=3001
     ports:
@@ -180,7 +180,7 @@ docker pull ghcr.io/username/restaurant-app:latest
 
 # Run the container
 docker run -p 3001:3001 \
-  -e DATABASE_URL=postgres://user:pass@host:5432/db \
+  -e DATABASE_URL=postgres://user:pass@host:5433/db \
   -e NODE_ENV=production \
   ghcr.io/username/restaurant-app:latest
 ```

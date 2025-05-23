@@ -327,7 +327,7 @@ config();
 
 async function checkDatabase() {
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/app_db'
+    connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5433/app_db'
   });
 
   try {
@@ -477,7 +477,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create a database connection pool with fallback defaults
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/app_db';
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5433/app_db';
 console.log(`Connecting to database: ${connectionString.split('@')[1]}`);
 
 export const pool = new Pool({
@@ -803,7 +803,7 @@ export default { testDir:'tests/e2e', webServer:{ command:'docker compose up -d'
   node /app/scripts/seed.js
   exec node /app/src/server/index.js
   ```
-* **Health‑check wait**: add `wait-for-it.sh db:5432 --` before migrations in compose for local dev.
+* **Health‑check wait**: add `wait-for-it.sh db:5433 --` before migrations in compose for local dev.
 
 \--- · Testing Strategy (unchanged snippets)
 

@@ -89,7 +89,7 @@ ORDER BY meters;
 
 ### Database Connection Issues
 - Check logs: `docker-compose logs postgres`
-- Verify port 5433 is available (changed from default 5432 to avoid conflicts)
+- Verify port 5433 is available 
 - Connect directly: `docker exec -it <container> psql -U postgres -d app_db`
 
 ### Reset Database

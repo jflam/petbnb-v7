@@ -103,7 +103,7 @@ enum UserRole {
 ### Required Environment Variables
 ```env
 # Database
-DATABASE_URL="postgresql://username:password@localhost:5432/petbnb"
+DATABASE_URL="postgresql://username:password@localhost:5433/petbnb"
 REDIS_URL="redis://localhost:6379"
 
 # Authentication
@@ -1070,7 +1070,7 @@ services:
       POSTGRES_PASSWORD: test
       POSTGRES_DB: petbnb_test
     ports:
-      - "5433:5432"
+      - "5433:5433"
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
 

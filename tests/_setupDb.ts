@@ -5,7 +5,7 @@ import path from 'path';
 export async function startPg() {
   // Start PostGIS container
   const container = await new GenericContainer('postgis/postgis:15-3.4')
-    .withExposedPorts(5432)
+    .withExposedPorts(5433)
     .withEnvironment({
       POSTGRES_USER: 'postgres',
       POSTGRES_PASSWORD: 'postgres',
@@ -19,11 +19,11 @@ export async function startPg() {
     .start();
 
   // Set environment variable for database connection
-  const port = container.getMappedPort(5432);
+  const port = container.getMappedPort(5433);
   const connectionString = `postgres://postgres:postgres@localhost:${port}/test_db`;
   process.env.DATABASE_URL = connectionString;
   
-  console.log(`Database container started on port ${container.getMappedPort(5432)}`);
+  console.log(`Database container started on port ${container.getMappedPort(5433)}`);
   console.log(`Connection string: ${connectionString}`);
 
   // Run migrations

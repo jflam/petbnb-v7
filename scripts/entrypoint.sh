@@ -5,7 +5,7 @@ echo "Starting PetBnB application..."
 
 # Wait for database to be ready
 echo "Waiting for database to be ready..."
-./scripts/wait-for-it.sh postgres:5432 -- echo "Database is ready"
+./scripts/wait-for-it.sh postgres:5433 -- echo "Database is ready"
 
 # Run migrations
 echo "Running database migrations..."
