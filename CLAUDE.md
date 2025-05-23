@@ -36,7 +36,9 @@ This is a full-stack application template with spatial data capabilities using:
 ## Important Files and Directories
 
 - `/migrations/` - SQL migration files
-- `/scripts/seed.ts` - Database seeding script
+- `/scripts/seed-consolidated.ts` - Database seeding script (uses data from `/data/` directory)
+- `/data/seeds/` - Authoritative seed data (sitters.js, owners.js)
+- `/data/table.csv` - Restaurant data for seeding
 - `/src/server/db.ts` - PostgreSQL connection pool
 - `/src/server/controllers/` - Express route controllers
 - `/src/client/components/` - React components
